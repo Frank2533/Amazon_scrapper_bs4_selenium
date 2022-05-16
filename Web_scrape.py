@@ -8,10 +8,11 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import NoSuchElementException
 
-details_dict={"Product Name": [""], "Star rating": [""], "Review Rating": [""], "Was Price": [""],
-                    "Current price": [""], "Product Description": [""], "ASIN Number": [""], "Product URL": [""]}
+details_dict = {"Product Name": [""], "Star rating": [""], "Review Rating": [""], "Was Price": [""],
+                "Current price": [""], "Product Description": [""], "ASIN Number": [""], "Product URL": [""]}
 
-counter=0
+counter = 0
+
 
 def get_product_title(soup):
     elements = soup.find_all("span", class_="a-size-medium a-color-base a-text-normal")
@@ -25,16 +26,17 @@ def get_product_title(soup):
 def get_Product_urls(soup):
     elements = soup.find_all("h2", class_="a-size-mini a-spacing-none a-color-base s-line-clamp-2")
     # print(elements)
-    links_list=list()
+    links_list = list()
     for element in elements:
         links = element.find_all("a")
         for link in links:
             links_list.append("www.amazon.in" + link["href"])
     return links_list
 
+
 def get_star_rating(soup):
     elements = soup.find_all("span", class_="a-icon-alt")
-    #print(elements)
+    # print(elements)
     star_list = [0]
     if (len(elements) != 0):
         star_list = list()
@@ -42,15 +44,17 @@ def get_star_rating(soup):
             star_list.append(element.text)
     return star_list
 
+
 def get_review_rating(soup):
     elements = soup.find_all("span", class_="a-size-base s-underline-text")
     # print(elements)
     review_list = ['0']
-    if(len(elements)!=0):
+    if (len(elements) != 0):
         review_list = list()
         for element in elements:
             review_list.append(element.text)
     return review_list
+
 
 def get_was_price(soup):
     elements = soup.find_all("span", class_="a-price a-text-price")
@@ -62,6 +66,7 @@ def get_was_price(soup):
             wprice_list.append(element.text)
     return wprice_list
 
+
 def get_current_price(soup):
     elements = soup.find_all("span", class_="a-price-whole")
     # print(elements)
@@ -72,12 +77,14 @@ def get_current_price(soup):
             price_list.append(element.text)
     return price_list
 
+
 def get_asin_number(links_list):
-    asin_list=[link.split('/')[3] for link in links_list]
+    asin_list = [link.split('/')[3] for link in links_list]
     return asin_list
 
+
 def get_sel_driver(links):
-    link="/" + links.split('/')[2] + "/" + links.split('/')[3]
+    link = "/" + links.split('/')[2] + "/" + links.split('/')[3]
     opt = Options()
 
     opt.add_argument("--disable-infobars")
@@ -86,7 +93,6 @@ def get_sel_driver(links):
     # opt.add_argument('--silent')
 
     opt.add_experimental_option('excludeSwitches', ['enable-logging'])
-
 
     url = "https://www.amazon.in" + link
     driver = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=opt)
@@ -97,53 +103,50 @@ def get_sel_driver(links):
     driver.quit()
     return soup
 
+
 def get_product_details(links_list):
     product_details = list()
     for links in links_list:
-        soup=get_sel_driver(links)
+        soup = get_sel_driver(links)
         elements = soup.find("ul", class_="a-unordered-list a-vertical a-spacing-mini")
         try:
             product_details.append(elements.text)
         except:
             product_details.append(None)
 
-
-
     return product_details
 
 
-
-
-
 def Scrape(pages):
-    list_of_pages=[str(x) for x in range(1,pages+1)]
+    print(pages)
+    list_of_pages = [str(x) for x in range(1, pages + 1)]
     print(list_of_pages)
     global details_dict
     global counter
     s = HTMLSession()
     key_list = details_dict.keys()
-    page="1"
+    page = "1"
     for page in list_of_pages:
-        product_name_list=list()
-        while(len(product_name_list)==0):
-            URL = "https://www.amazon.in/s?k=laptops&i=computers&page="+page
+        product_name_list = list()
+        while (len(product_name_list) == 0):
+            URL = "https://www.amazon.in/s?k=laptops&i=computers&page=" + page
             r = s.get(URL)
             soup = BeautifulSoup(r.text, "html.parser")
             # print(soup)
-            product_name_list=get_product_title(soup)
-            if(len(product_name_list)==0):
+            product_name_list = get_product_title(soup)
+            if (len(product_name_list) == 0):
                 sleep(5)
-        elements=soup.find_all("div", {"data-asin":True, "data-component-type":"s-search-result"})
-        counter=0
+        elements = soup.find_all("div", {"data-asin": True, "data-component-type": "s-search-result"})
+        counter = 0
         # print("#####################################################################"+str(len(elements)))
         print(f"page {page} contains {len(elements)} items")
-
 
         for x in elements:
             extract(x)
         for x in key_list:
             print(str(x) + ": " + str(len(details_dict[x])))
     return details_dict
+
 
 def extract(x):
     # for x in elements:
@@ -170,21 +173,25 @@ def extract(x):
     # print(details_dict)
 
 
-
-
 def convert_to_xlsx(data):
     df = pd.DataFrame.from_dict(data=data)
     df.to_excel('/home/akash/Desktop/AMAZON_BS4/extracted_data.xlsx')
 
+    # get_detail_dict(details_dict,links_list)
 
-        # get_detail_dict(details_dict,links_list)
+    # record_dict=dict()
 
-        # record_dict=dict()
 
 if __name__ == "__main__":
+    def get_page():
+        try:
+            page = int(input("Enter amount of pages to scrape"))
+            return page
+        except:
+            print("Enter valid page number")
+            get_page()
 
-
-    data = Scrape(10)
+    data = Scrape(get_page())
     convert_to_xlsx(data)
 
 # details_dict = {"Product Name": [], "Star rating": [], "Review Rating": [], "Was Price": [],
