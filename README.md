@@ -17,8 +17,8 @@ Excel (.xlsx)
 ## Do make following changes in program:-<br>
 | Entity | Line no. |
 | ----- | ----- |
-| Amazon products search result page URL | 129 |
-| Excel file path | 177 |
+| Amazon products search result page URL | 132 |
+| Excel file path | 178 |
 
 
 
