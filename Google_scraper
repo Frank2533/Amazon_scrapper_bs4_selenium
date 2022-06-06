@@ -1,0 +1,151 @@
+import re
+from time import sleep
+import pandas as pd
+import openpyxl
+from requests_html import HTMLSession
+from bs4 import BeautifulSoup
+from seleniumwire import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.options import Options
+import json
+
+def get_proxy():
+    COUNTRY = ''
+    PROXY_HOST = 'proxyhost.com'  # rotating proxy or host
+    PROXY_PORT =  '' # port
+    PROXY_USER =  '' # username
+    PROXY_PASS =  '' # password
+    Proxy = f'https://{PROXY_USER}:{PROXY_PASS}@{PROXY_HOST}:{PROXY_PORT}'
+    return COUNTRY, Proxy
+
+
+def get_sel_driver():
+
+    opt = Options()
+    settings = {
+        "recentDestinations": [{
+            "id": "Save as PDF",
+            "origin": "local",
+            "account": "",
+        }],
+        "selectedDestinationId": "Save as PDF",
+        "version": 2
+    }
+    prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
+    opt.add_experimental_option('prefs', prefs)
+    opt.add_argument('--kiosk-printing')
+    opt.add_argument("--disable-infobars")
+    opt.add_argument("--disable-extensions")
+    opt.add_argument('--log-level=OFF')
+
+    # opt.add_argument('--silent')
+
+    country, proxy = get_proxy()
+    options_seleniumWire = {
+        'proxy': {
+            'https': proxy,
+        }
+    }
+
+    opt.add_experimental_option('excludeSwitches', ['enable-logging'])
+    # """Getting the links of google pages to scrape"""
+    links = get_urls(file_name)                         #from config file
+    domains = []
+    URLS = []
+    SKUlist = []
+    POSlist = []
+    for x in range(0, len(links)):
+        for y in range(1, 3):
+            pos=0
+            link = links[x][y]
+            url = link
+            driver = webdriver.Chrome(ChromeDriverManager().install(), chrome_options=opt, seleniumwire_options=options_seleniumWire)
+
+            # Website URL
+            driver.get(url)
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            if y==2:
+                pos=9
+            # """ Here I get the links of all the search results, and also save
+            #  the pdf of google search page and screenshots of websites to download folder"""
+            gurls, SKUlist1, POSlist1 = get_google_result_urls(driver, soup, links[x][0], country, pos)
+            URLS.extend(gurls)
+            SKUlist.extend(SKUlist1)
+            POSlist.extend(POSlist1)
+            for x in gurls:
+                dom = x.split("/")[2]
+                domains.append(dom)
+    SKU = SKUlist
+            # domians = domains
+            # urls = gurls
+    positions = POSlist
+    Country_monitored = [country for x in range(0, len(SKUlist))]
+    data = {'SKU': SKU, 'domains': domains, 'URLS': URLS, 'positions': positions, 'Country_monitored': Country_monitored}
+    return data
+
+
+def get_urls(file_name):
+    links = []
+    link = []
+    wb_obj = openpyxl.load_workbook(file_name)
+    sheet_obj = wb_obj.active
+    row_num = row_num_start                             #from config_file
+    column_num = column_num                             #from config_file
+    cell_obj = sheet_obj.cell(row=row_num, column=column_num)
+    print("The SKU's found are:\n")
+    while cell_obj.value!= "" :
+        print(cell_obj.value)
+        cell_obj = sheet_obj.cell(row=row_num, column=column_num)
+        link_page_1 = "https://www.google.com/search?q=\""+cell_obj.value+"\"%27"
+        link_page_2 = "https://www.google.com/search?q=\""+cell_obj.value+"\"&start=10"
+        link.append(str(cell_obj.value))
+        link.append(link_page_1)
+        link.append(link_page_2)
+        links.append(link)
+        row_num+=1
+    """ The link list returned format will be
+        [[SKUno,linkpage1,linkpage2][SKUno,linkpage1,linkpage2]"""
+    return links
+
+
+def get_google_result_urls(driver, soup, SKU, country, pos):
+    links = soup.find_all('div', attrs={'class': "yuRUbf"})
+    link_list = []
+    SKUlist = []
+    POSlist=[]
+    for link in links:
+        pos+=1
+        link1 = link.find('a')['href']
+        SKUlist.append(SKU)
+        link_list.append(link1)
+        POSlist.append(pos)
+    driver.execute_script('window.print();')                    # Saving pdf of google page
+    cnt=0
+    for link in link_list:
+        cnt+=1
+        driver.get(link)
+        sleep(2)
+        driver.save_screenshot(f'{country}_{SKU}_{cnt}.png')    # Saving the website ss
+
+    return link_list, SKUlist, POSlist
+
+def make_excel():
+    data = get_sel_driver()
+    df = pd.DataFrame(data=data)
+    df.to_csv('outputfile.csv', index=False)
+
+make_excel()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
